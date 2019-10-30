@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none';  script-src 'self'; child-src 'self';">
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -28,8 +27,11 @@
             <!-- Navbar Right Side -->
             <div class="navbar-nav">
               <a class="nav-item nav-link" href="{{ url_for('spell_check') }}">Spell Checker</a>
-              <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
-              <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
+              {% if current_user.is_authenticated %}
+                <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
+              {% else %}
+                <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
+              {% endif %}
               <a class="nav-item nav-link" href="{{ url_for('register') }}">Register</a>
             </div>
           </div>
