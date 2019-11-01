@@ -21,7 +21,8 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(20), unique=True, nullable=False)
     phone = db.Column(db.String(11))
     password = db.Column(db.String(60), nullable=False)
-    posts = db.relationship('Post', backref='author', lazy=True)
+    salt = db.Column(db.String(), nullable=False)
+    posts = db.relationship('Post', backref='user', lazy=True)
 
     def __repr__(self):
         return f"User('{self.username}', '{self.password}', '{self.phone}')"
@@ -35,7 +36,18 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
-        return f"Post('{self.user_id}', '{self.date_posted}', '{self.spell_submitted}', '{self.spell_results}')"
+        return f"Post('{self.id}', '{self.user_id}', '{self.spell_submitted}', '{self.spell_results}', '{self.date_posted}')"
+
+
+class Logs(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    login_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    logout_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f"Post('{self.user_id}', '{self.login_timestamp}', '{self.logout_timestamp}')"
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -46,23 +58,20 @@ def setup_db():
     db.drop_all()
     db.create_all()
 
-
 @app.route("/")
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
-    global salt
     if request.method == 'POST':
         if form.validate_on_submit():
-            userinfo = User.query.filter_by(username=form.username.data).first()
-            if userinfo == None:
+            user = User.query.filter_by(username=form.username.data).first()
+            if user == None:
                 salt = bcrypt.gensalt()
                 hashed = bcrypt.hashpw((form.password.data).encode('utf-8'),salt)
-                userinfo = User(username=form.username.data, password=hashed, phone=form.phone_number.data)
-                db.session.add(userinfo)
+                user = User(username=form.username.data, password=hashed, phone=form.phone_number.data, salt=salt)
+                db.session.add(user)
                 db.session.commit()
-                print(userinfo)
                 regstatus = 'Success you have been successfully registered!'
                 return render_template('register.html', title='Register', form=form, regstatus=regstatus)
             else:
@@ -78,36 +87,44 @@ def register():
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     form = LoginForm()
-    global salt
-    session.pop('user', None)   
+    logout_user()  
     user = User.query.filter_by(username=form.username.data).first()
+    print(user)
     if form.validate_on_submit():
-        hashed_login = bcrypt.hashpw((form.password.data).encode('utf-8'),salt)
-        print(user)
-        print(user.phone)
-        print(form.phone_number.data)
-        print(user.username)
-        print(form.username.data)
-        print(user.password)
-        print(hashed_login)
+        print('hello')
+        hashed_login = bcrypt.hashpw((form.password.data).encode('utf-8'),user.salt)
         if user == None:
             print('hello1')
             result = 'Incorrect'
             return render_template('login.html', title='Login', form=form, result=result)
         elif form.username.data == user.username and hashed_login == user.password and form.phone_number.data == user.phone:
             print('hello2')
+            print(form.username.data)
+            print(user.username)
+            print(hashed_login)
+            print(user.password)
+            print(form.phone_number.data)
+            print(user.phone)
+
             login_user(user, remember=form.remember.data)
             result = 'success'
             return render_template('login.html', title='Login', form=form, result=result)
         elif hashed_login != user.password or form.username.data != user.username:
             print('hello3')
+            print(form.username.data)
+            print(user.username)
+            print(hashed_login)
+            print(user.password)
+            print(form.phone_number.data)
+            print(user.phone)
             result = 'Incorrect'
             return render_template('login.html', title='Login', form=form, result=result)
         elif form.phone_number.data != user.phone:
+            print('hello4')
             result = 'Two-factor failure'
             return render_template('login.html', title='Login', form=form, result=result)
     else:
-        print('hello4')
+        print('hello5')
         return render_template('login.html', title='Login', form=form)
 
 
@@ -133,9 +150,12 @@ def spell_check():
         spellcheck_results = spellcheck_results.replace("\n",", ")
         spellcheck_results = spellcheck_results.rstrip(", ")
         spellcheck_file = open("resultsfile.txt","w")
+        spell_check = Post(spell_submitted=input_text, spell_results=spellcheck_results, user=current_user, date_posted=datetime.now())
+        db.session.add(spell_check)
+        db.session.commit()
         spellcheck_file.write(spellcheck_results)
         spellcheck_file.close()
-        return render_template('spell_check.html', title='Spell Checker Results', form=form, spellcheck_results=spellcheck_results, input_text=input_text)
+        return render_template('spell_check.html', title='Spell Checker Results', form=form, spellcheck_results=spell_check.spell_results, input_text=spell_check.spell_submitted)
     else:
         return render_template('spell_check.html', title='Spell Checker', form=form)
 
