@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block content %}
+    <div class="content-section">
+        <p id='queryid'>Query ID = {{query_id}}</p>
+        <p id='username'>Username = {{cuser}}</p>
+        <p id='querytext'>Submitted Text = {{query_submitted}}</p>
+        <p id='queryresults'>Spelling Errors = {{query_results}}</p>
+    </div>
+{% endblock content %}
+
+cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)

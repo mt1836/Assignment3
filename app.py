@@ -22,7 +22,10 @@ class User(db.Model, UserMixin):
     phone = db.Column(db.String(11))
     password = db.Column(db.String(60), nullable=False)
     salt = db.Column(db.String(), nullable=False)
-    posts = db.relationship('Post', backref='user', lazy=True)
+    post = db.relationship('Post', backref='user', lazy=True)
+    login_timestamp = db.relationship('Login_timestamp', backref='user', lazy=True)
+    logout_timestamp = db.relationship('Logout_timestamp', backref='user', lazy=True)
+
 
     def __repr__(self):
         return f"User('{self.username}', '{self.password}', '{self.phone}')"
@@ -33,21 +36,30 @@ class Post(db.Model):
     date_posted = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     spell_submitted = db.Column(db.Text, nullable=False)
     spell_results = db.Column(db.Text)
+    numqueries = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
-        return f"Post('{self.id}', '{self.user_id}', '{self.spell_submitted}', '{self.spell_results}', '{self.date_posted}')"
+        return f"Post('{self.id}', '{self.user_id}', '{self.spell_submitted}', '{self.spell_results}', '{self.date_posted}', '{self.numqueries}')"
 
 
-class Logs(db.Model):
+class Login_timestamp(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     login_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    logout_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
-        return f"Post('{self.user_id}', '{self.login_timestamp}', '{self.logout_timestamp}')"
+        return f"Login_timestamp('{self.user_id}', '{self.login_timestamp}')"
 
+
+class Logout_timestamp(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    logout_timestamp = db.Column(db.DateTime, default=None)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+    def __repr__(self):
+        return f"Logout_timestamp('{self.user_id}', '{self.logout_timestamp}')"
+        
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -105,8 +117,10 @@ def login():
             print(user.password)
             print(form.phone_number.data)
             print(user.phone)
-
-            login_user(user, remember=form.remember.data)
+            login_user(user)
+            login_time = Login_timestamp(user=current_user, login_timestamp=datetime.now())
+            db.session.add(login_time)
+            db.session.commit()
             result = 'success'
             return render_template('login.html', title='Login', form=form, result=result)
         elif hashed_login != user.password or form.username.data != user.username:
@@ -130,6 +144,9 @@ def login():
 
 @app.route("/logout", methods=['GET'])
 def logout():
+    logout_time = Logout_timestamp(user=current_user, logout_timestamp=datetime.now())
+    db.session.add(logout_time)
+    db.session.commit()
     logout_user()
     return redirect(url_for('login'))
     
@@ -159,6 +176,26 @@ def spell_check():
     else:
         return render_template('spell_check.html', title='Spell Checker', form=form)
 
+
+@app.route("/history")
+@login_required
+def history():
+    cuser = current_user.username
+    user = User.query.filter_by(username=current_user.username).first()
+    numqueries = len(user.post)
+    queries = user.post
+    return render_template('history.html', title='History', user=user, numqueries=numqueries, cuser=cuser, queries=queries)
+        
+
+@app.route("/history/query<int:queryid>")
+@login_required
+def history_query(queryid):
+    cuser = current_user.username
+    user = User.query.filter_by(username=current_user.username).first()
+    query_id = user.post[queryid-1].id
+    query_submitted = user.post[queryid-1].spell_submitted
+    query_results = user.post[queryid-1].spell_results
+    return render_template('query_details.html', title='Query Details', cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
 
 setup_db()
 if __name__ == '__main__':
