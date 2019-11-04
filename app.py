@@ -79,6 +79,7 @@ def setup_db():
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
+    logout()
     form = RegistrationForm()
     if request.method == 'POST':
         if form.validate_on_submit():
@@ -103,8 +104,8 @@ def register():
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
+    logout()
     form = LoginForm()
-    logout_user()  
     user = User.query.filter_by(username=form.username.data).first()
     if form.validate_on_submit():
         hashed_login = bcrypt.hashpw((form.password.data).encode('utf-8'),user.salt)
@@ -144,7 +145,9 @@ def spell_check():
     form = SpellCheckForm()
     global input_text
     global spellcheck_results
+    print('spell did you make it here')
     if form.validate_on_submit():
+        print('spell did you make it here1')
         input_text = form.checktext.data
         input_file = open("spellcheckfile.txt","w")
         input_file.write(input_text)
@@ -159,16 +162,22 @@ def spell_check():
         db.session.commit()
         spellcheck_file.write(spellcheck_results)
         spellcheck_file.close()
+        print('spell did you make it here2')
         return render_template('spell_check.html', title='Spell Checker Results', form=form, spellcheck_results=spell_check.spell_results, input_text=spell_check.spell_submitted)
+        print('spell did you make it here')
     else:
+        print('spell did you make it here3')
         return render_template('spell_check.html', title='Spell Checker', form=form)
+        print('spell did you make it here4')
 
 
-@app.route("/history")
+@app.route("/history", 
+methods=['GET', 'POST'])
 @login_required
 def history():
     form = HistoryForm()
     cuser = current_user.username
+    global search_user
     print('current user = '+ cuser)
     if cuser == None:
         return render_template('error.html', title='ERROR')
@@ -188,7 +197,7 @@ def history():
             return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries, search_user=search_user)
         else:
             print('did you make it here6')
-            return render_template('history.html', title='History', form=form)
+            return render_template('history.html', title='History', form=form, cuser=cuser)
     else:
         print('did you make it here7')
         user = User.query.filter_by(username=current_user.username).first()
@@ -204,15 +213,26 @@ def history():
 @login_required
 def history_query(queryid):
     cuser = current_user.username
-    user = User.query.filter_by(username=current_user.username).first()
-    numqueries = len(user.post)
-    query_id = queryid
-    for i in range(numqueries):
-        if user.post[i].id == query_id:
-            query_submitted = user.post[i].spell_submitted
-            query_results = user.post[i].spell_results
-    return render_template('query_details.html', title='Query Details', cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
-
+    if cuser == 'admin':    
+        username = search_user
+        user = User.query.filter_by(username=search_user).first()
+        numqueries = len(user.post)
+        query_id = queryid
+        for i in range(numqueries):
+            if user.post[i].id == query_id:
+                query_submitted = user.post[i].spell_submitted
+                query_results = user.post[i].spell_results
+        return render_template('query_details.html', title='Query Details', username=username, cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
+    else:
+        username = cuser
+        user = User.query.filter_by(username=cuser).first()
+        numqueries = len(user.post)
+        query_id = queryid
+        for i in range(numqueries):
+            if user.post[i].id == query_id:
+                query_submitted = user.post[i].spell_submitted
+                query_results = user.post[i].spell_results
+        return render_template('query_details.html', title='Query Details', username=username, cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
 setup_db()
 if __name__ == '__main__':
     app.run(debug=True)
