@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_login import UserMixin
 from flask_login import login_user, current_user, logout_user, login_required
-from forms import RegistrationForm, LoginForm, SpellCheckForm
+from forms import RegistrationForm, LoginForm, SpellCheckForm, HistoryForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
@@ -69,6 +69,11 @@ def load_user(user_id):
 def setup_db():
     db.drop_all()
     db.create_all()
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(('Administrator@1').encode('utf-8'),salt)
+    user = User(username='admin', password=hashed, phone='12345678901', salt=salt)
+    db.session.add(user)
+    db.session.commit()
 
 @app.route("/")
 
@@ -101,22 +106,12 @@ def login():
     form = LoginForm()
     logout_user()  
     user = User.query.filter_by(username=form.username.data).first()
-    print(user)
     if form.validate_on_submit():
-        print('hello')
         hashed_login = bcrypt.hashpw((form.password.data).encode('utf-8'),user.salt)
         if user == None:
-            print('hello1')
             result = 'Incorrect'
             return render_template('login.html', title='Login', form=form, result=result)
         elif form.username.data == user.username and hashed_login == user.password and form.phone_number.data == user.phone:
-            print('hello2')
-            print(form.username.data)
-            print(user.username)
-            print(hashed_login)
-            print(user.password)
-            print(form.phone_number.data)
-            print(user.phone)
             login_user(user)
             login_time = Login_timestamp(user=current_user, login_timestamp=datetime.now())
             db.session.add(login_time)
@@ -124,25 +119,17 @@ def login():
             result = 'success'
             return render_template('login.html', title='Login', form=form, result=result)
         elif hashed_login != user.password or form.username.data != user.username:
-            print('hello3')
-            print(form.username.data)
-            print(user.username)
-            print(hashed_login)
-            print(user.password)
-            print(form.phone_number.data)
-            print(user.phone)
             result = 'Incorrect'
             return render_template('login.html', title='Login', form=form, result=result)
         elif form.phone_number.data != user.phone:
-            print('hello4')
             result = 'Two-factor failure'
             return render_template('login.html', title='Login', form=form, result=result)
     else:
-        print('hello5')
         return render_template('login.html', title='Login', form=form)
 
 
 @app.route("/logout", methods=['GET'])
+@login_required
 def logout():
     logout_time = Logout_timestamp(user=current_user, logout_timestamp=datetime.now())
     db.session.add(logout_time)
@@ -180,11 +167,37 @@ def spell_check():
 @app.route("/history")
 @login_required
 def history():
+    form = HistoryForm()
     cuser = current_user.username
-    user = User.query.filter_by(username=current_user.username).first()
-    numqueries = len(user.post)
-    queries = user.post
-    return render_template('history.html', title='History', user=user, numqueries=numqueries, cuser=cuser, queries=queries)
+    print('current user = '+ cuser)
+    if cuser == None:
+        return render_template('error.html', title='ERROR')
+    if cuser == 'admin':
+        print(form.username.data)
+        print('did you make it here')
+        if form.validate_on_submit():
+            print('did you make it here1')
+            search_user = form.username.data
+            print('did you make it here2')
+            user = User.query.filter_by(username=search_user).first()
+            print('did you make it here3')
+            numqueries = len(user.post)
+            print('did you make it here4')
+            queries = user.post
+            print('did you make it here5')   
+            return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries, search_user=search_user)
+        else:
+            print('did you make it here6')
+            return render_template('history.html', title='History', form=form)
+    else:
+        print('did you make it here7')
+        user = User.query.filter_by(username=current_user.username).first()
+        print('did you make it here8')
+        numqueries = len(user.post)
+        print('did you make it here9')
+        queries = user.post
+        print('did you make it here10')
+        return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries)
         
 
 @app.route("/history/query<int:queryid>")
@@ -192,9 +205,12 @@ def history():
 def history_query(queryid):
     cuser = current_user.username
     user = User.query.filter_by(username=current_user.username).first()
-    query_id = user.post[queryid-1].id
-    query_submitted = user.post[queryid-1].spell_submitted
-    query_results = user.post[queryid-1].spell_results
+    numqueries = len(user.post)
+    query_id = queryid
+    for i in range(numqueries):
+        if user.post[i].id == query_id:
+            query_submitted = user.post[i].spell_submitted
+            query_results = user.post[i].spell_results
     return render_template('query_details.html', title='Query Details', cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
 
 setup_db()

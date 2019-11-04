@@ -23,3 +23,7 @@ class LoginForm(FlaskForm):
 class SpellCheckForm(FlaskForm):
     checktext = StringField('Input Text', id='inputtext', validators=[DataRequired()])
     submit = SubmitField('Submit')
+
+class HistoryForm(FlaskForm):
+    username = StringField('User Search', id='uname', validators=[DataRequired()])
+    submit = SubmitField('Submit')
