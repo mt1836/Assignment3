@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_login import UserMixin
 from flask_login import login_user, current_user, logout_user, login_required
-from forms import RegistrationForm, LoginForm, SpellCheckForm, HistoryForm
+from forms import RegistrationForm, LoginForm, SpellCheckForm, HistoryForm, LoginHistoryForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
@@ -171,21 +171,27 @@ def spell_check():
         print('spell did you make it here4')
 
 
-@app.route("/history", 
-methods=['GET', 'POST'])
+@app.route("/history", methods=['GET', 'POST'])
 @login_required
 def history():
     form = HistoryForm()
     cuser = current_user.username
     global search_user
-    print('current user = '+ cuser)
     if cuser == None:
         return render_template('error.html', title='ERROR')
     if cuser == 'admin':
         print(form.username.data)
         print('did you make it here')
+        print('current user = '+ cuser)
+        print('did you make it here7')
+        userall = User.query.filter_by(username=current_user.username).first()
+        print('did you make it here8')
+        numqueriesall = len(userall.post)
+        print('did you make it here9')
+        queriesall = userall.post
+        print('did you make it here10')
+        print('did you make it here1')
         if form.validate_on_submit():
-            print('did you make it here1')
             search_user = form.username.data
             print('did you make it here2')
             user = User.query.filter_by(username=search_user).first()
@@ -194,26 +200,28 @@ def history():
             print('did you make it here4')
             queries = user.post
             print('did you make it here5')   
-            return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries, search_user=search_user)
+            return render_template('history.html', title='History', form=form, userall=userall, numqueriesall=numqueriesall, queriesall=queriesall, user=user, numqueries=numqueries, cuser=cuser, queries=queries, search_user=search_user)
         else:
             print('did you make it here6')
             return render_template('history.html', title='History', form=form, cuser=cuser)
     else:
+        print('current user = '+ cuser)
         print('did you make it here7')
-        user = User.query.filter_by(username=current_user.username).first()
+        userall = User.query.filter_by(username=current_user.username).first()
         print('did you make it here8')
-        numqueries = len(user.post)
+        numqueriesall = len(userall.post)
         print('did you make it here9')
-        queries = user.post
+        queriesall = userall.post
         print('did you make it here10')
-        return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries)
-        
+        return render_template('history.html', title='History', form=form, userall=userall, numqueriesall=numqueriesall, queriesall=queriesall, cuser=cuser)
 
 @app.route("/history/query<int:queryid>")
 @login_required
 def history_query(queryid):
     cuser = current_user.username
-    if cuser == 'admin':    
+    if cuser == None:
+        return render_template('error.html', title='ERROR')
+    elif cuser == 'admin':   
         username = search_user
         user = User.query.filter_by(username=search_user).first()
         numqueries = len(user.post)
@@ -233,6 +241,45 @@ def history_query(queryid):
                 query_submitted = user.post[i].spell_submitted
                 query_results = user.post[i].spell_results
         return render_template('query_details.html', title='Query Details', username=username, cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
+
+
+@app.route("/history/login_history", methods=['GET', 'POST'])
+@login_required
+def login_history():
+    form = LoginHistoryForm()
+    cuser = current_user.username
+    global login_search_user
+    print('current user = '+ cuser)
+    if cuser == None:
+        return render_template('error.html', title='ERROR')
+    elif cuser == 'admin':
+        print(form.username.data)
+        print('did you make it here')
+        if form.validate_on_submit():
+            print('did you make it here1')
+            login_search_user = form.username.data
+            print('did you make it here2')
+            user = User.query.filter_by(username=login_search_user).first()
+            print('did you make it here3')
+            numqueries = len(user.post)
+            print('did you make it here4')
+            loginlogs = user.login_timestamp
+            logoutlogs = user.logout_timestamp
+            print('did you make it here5')   
+            return render_template('login_history.html', title='History', form=form, user=user, loginlogs=loginlogs, logoutlogs=logoutlogs, cuser=cuser, numqueries=numqueries, login_search_user=login_search_user)
+        else:
+            print('did you make it here6')
+            return render_template('login_history.html', title='History', form=form, cuser=cuser)
+    else:
+        print('did you make it here7')
+        user = User.query.filter_by(username=current_user.username).first()
+        print('did you make it here8')
+        numqueries = len(user.post)
+        print('did you make it here9')
+        queries = user.post
+        print('did you make it here10')
+        return render_template('login_history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries)
+        
 setup_db()
 if __name__ == '__main__':
     app.run(debug=True)

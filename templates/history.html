@@ -26,11 +26,10 @@
             {% for i in queries %}
                 <p id='query{{i.id}}'><a class="nav-item nav-link" href="{{ url_for('history_query', queryid=i.id) }}">Query #{{i.id}}</a></p>
             {% endfor %}
-        {% else %}
-            <p id='numqueries'>Total number of queries for {{cuser}}= {{numqueries}}</p>
-            {% for i in queries %}
-                <p id='query{{i.id}}'><a class="nav-item nav-link" href="{{ url_for('history_query', queryid=i.id) }}">Query #{{i.id}}</a></p>
-            {% endfor %}
         {% endif %}
+        <p id='numqueries'>Total number of queries for {{cuser}}= {{numqueriesall}}</p>
+        {% for i in queriesall %}
+            <p id='query{{i.id}}'><a class="nav-item nav-link" href="{{ url_for('history_query', queryid=i.id) }}">Query #{{i.id}}</a></p>
+        {% endfor %}
     </div>
 {% endblock content %}
