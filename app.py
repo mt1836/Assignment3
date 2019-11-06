@@ -222,9 +222,20 @@ def history_query(queryid):
     print(manquery_submitted)
     manquery_results = Post.query.filter_by(id=query_id).first().spell_results
     print(manquery_results)
-    if search_user == -1:
+    if cuser != manquery_username and cuser == 'admin' and search_user == -1:
+        print('search_user')
+        return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
+    elif cuser != manquery_username and cuser != 'admin' and search_user == -1:
+        print('search_user')
+        return render_template('error.html', title='ERROR')
+    elif cuser == manquery_username and cuser == 'admin' and search_user == -1:
+        print('search_user')
+        return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
+    elif cuser == manquery_username and cuser != 'admin' and search_user == -1:
+        print('search_user')
         return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
     elif cuser == 'admin':    
+        print('admin')
         username = search_user
         user = User.query.filter_by(username=search_user).first()
         numqueries = len(user.post)
@@ -234,6 +245,7 @@ def history_query(queryid):
                 query_results = user.post[i].spell_results
         return render_template('query_details.html', title='Query Details', username=username, cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
     else:
+        print('normal')
         username = cuser
         user = User.query.filter_by(username=cuser).first()
         numqueries = len(user.post)
