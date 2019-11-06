@@ -13,6 +13,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+search_user = -1
 
 #app.config['WTF_CSRF_ENABLED'] = False
 
@@ -178,7 +179,6 @@ def history():
     form = HistoryForm()
     cuser = current_user.username
     global search_user
-    search_user = -1
     print('current user = '+ cuser)
     if cuser == None:
         return render_template('error.html', title='ERROR')
@@ -216,15 +216,13 @@ def history_query(queryid):
     cuser = current_user.username
     global search_user
     query_id = queryid
-    print('hello')
-    print(search_user)
+    manquery_username = Post.query.filter_by(id=query_id).first().user.username
+    print(manquery_username)
+    manquery_submitted = Post.query.filter_by(id=query_id).first().spell_submitted
+    print(manquery_submitted)
+    manquery_results = Post.query.filter_by(id=query_id).first().spell_results
+    print(manquery_results)
     if search_user == -1:
-        manquery_username = Post.query.filter_by(id=query_id).first().user.username
-        print(manquery_username)
-        manquery_submitted = Post.query.filter_by(id=query_id).first().spell_submitted
-        print(manquery_submitted)
-        manquery_results = Post.query.filter_by(id=query_id).first().spell_results
-        print(manquery_results)
         return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
     elif cuser == 'admin':    
         username = search_user
