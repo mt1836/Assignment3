@@ -26,8 +26,13 @@
           <div class="collapse navbar-collapse" id="navbarToggle">
             <!-- Navbar Right Side -->
             <div class="navbar-nav">
-              <a class="nav-item nav-link" href="{{ url_for('spell_check') }}">Spell Checker</a>
-              {% if current_user.is_authenticated %}
+              {% if current_user.is_authenticated and current_user.username == 'admin' %}
+                <a class="nav-item nav-link" href="{{ url_for('spell_check') }}">Spell Checker</a>
+                <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
+                <a class="nav-item nav-link" href="{{ url_for('history') }}">History</a>
+                <a class="nav-item nav-link" href="{{ url_for('login_history') }}">Login History</a>
+              {% elif current_user.is_authenticated%}
+                <a class="nav-item nav-link" href="{{ url_for('spell_check') }}">Spell Checker</a>
                 <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
                 <a class="nav-item nav-link" href="{{ url_for('history') }}">History</a>
               {% else %}

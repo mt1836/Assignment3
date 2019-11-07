@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_login import UserMixin
 from flask_login import login_user, current_user, logout_user, login_required
-from forms import RegistrationForm, LoginForm, SpellCheckForm, HistoryForm
+from forms import RegistrationForm, LoginForm, SpellCheckForm, HistoryForm, LoginHistoryForm
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '5791628bb0b13ce0c676dfde280ba245'
@@ -254,6 +254,42 @@ def history_query(queryid):
                 query_submitted = user.post[i].spell_submitted
                 query_results = user.post[i].spell_results
         return render_template('query_details.html', title='Query Details', username=username, cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
+
+
+@app.route("/history/login_history", methods=['GET', 'POST'])
+@login_required
+def login_history():
+    form = LoginHistoryForm()
+    cuser = current_user.username
+    global login_search_user
+    print('current user = '+ cuser)
+    if cuser == None:
+        return render_template('error.html', title='ERROR')
+    elif cuser == 'admin':
+        print(form.username.data)
+        print('did you make it here')
+        if form.validate_on_submit():
+            print('did you make it here1')
+            login_search_user = form.username.data
+            print('did you make it here2')
+            user = User.query.filter_by(username=login_search_user).first()
+            print('did you make it here3')
+            numqueries = len(user.post)
+            print('did you make it here4')
+            loginlogs = user.login_timestamp
+            loginlogslen = len(loginlogs)
+            loginlogstime = loginlogs[0].login_timestamp
+            logoutlogs = user.logout_timestamp
+            logoutlogslen = len(logoutlogs)
+            loginlogstime = loginlogs[0].login_timestamp
+            print('did you make it here5')   
+            return render_template('login_history.html', title='History', form=form, user=user, loginlogstime = loginlogstime, loginlogslen=loginlogslen, logoutlogslen=logoutlogslen, loginlogs=loginlogs, logoutlogs=logoutlogs, cuser=cuser, numqueries=numqueries, login_search_user=login_search_user)
+        else:
+            print('did you make it here6')
+            return render_template('login_history.html', title='History', form=form, cuser=cuser)
+    else:
+        return render_template('error.html', title='ERROR')
+
 setup_db()
 if __name__ == '__main__':
     app.run(debug=True)
