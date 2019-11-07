@@ -24,8 +24,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(60), nullable=False)
     salt = db.Column(db.String(), nullable=False)
     post = db.relationship('Post', backref='user', lazy=True)
-    login_timestamp = db.relationship('Login_timestamp', backref='user', lazy=True)
-    logout_timestamp = db.relationship('Logout_timestamp', backref='user', lazy=True)
+    login_history = db.relationship('Login_history', backref='user', lazy=True)
 
 
     def __repr__(self):
@@ -44,22 +43,14 @@ class Post(db.Model):
         return f"Post('{self.id}', '{self.user_id}', '{self.spell_submitted}', '{self.spell_results}', '{self.date_posted}', '{self.numqueries}')"
 
 
-class Login_timestamp(db.Model):
+class Login_history(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     login_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-
-    def __repr__(self):
-        return f"Login_timestamp('{self.user_id}', '{self.login_timestamp}')"
-
-
-class Logout_timestamp(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
     logout_timestamp = db.Column(db.DateTime, default=None)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
-        return f"Logout_timestamp('{self.user_id}', '{self.logout_timestamp}')"
+        return f"Login_history('{self.user_id}', '{self.login_timestamp}', '{self.logout_timestamp}')"
         
 
 @login_manager.user_loader
@@ -80,7 +71,6 @@ def setup_db():
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
-    logout()
     form = RegistrationForm()
     if request.method == 'POST':
         if form.validate_on_submit():
@@ -105,7 +95,6 @@ def register():
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
-    logout()
     form = LoginForm()
     user = User.query.filter_by(username=form.username.data).first()
     if form.validate_on_submit():
@@ -115,9 +104,10 @@ def login():
             return render_template('login.html', title='Login', form=form, result=result)
         elif form.username.data == user.username and hashed_login == user.password and form.phone_number.data == user.phone:
             login_user(user)
-            login_time = Login_timestamp(user=current_user, login_timestamp=datetime.now())
+            login_time = Login_history(user=current_user, login_timestamp=datetime.now())
             db.session.add(login_time)
             db.session.commit()
+            print('login')
             result = 'success'
             return render_template('login.html', title='Login', form=form, result=result)
         elif hashed_login != user.password or form.username.data != user.username:
@@ -133,9 +123,10 @@ def login():
 @app.route("/logout", methods=['GET'])
 @login_required
 def logout():
-    logout_time = Logout_timestamp(user=current_user, logout_timestamp=datetime.now())
+    logout_time = Login_history(user=current_user, logout_timestamp=datetime.now())
     db.session.add(logout_time)
     db.session.commit()
+    print('logout')
     logout_user()
     return redirect(url_for('login'))
     
@@ -261,31 +252,30 @@ def history_query(queryid):
 def login_history():
     form = LoginHistoryForm()
     cuser = current_user.username
+    user = None
     global login_search_user
     print('current user = '+ cuser)
     if cuser == None:
         return render_template('error.html', title='ERROR')
     elif cuser == 'admin':
         print(form.username.data)
-        print('did you make it here')
+        print('login did you make it here')
         if form.validate_on_submit():
-            print('did you make it here1')
+            print('login did you make it here1')
             login_search_user = form.username.data
-            print('did you make it here2')
+            print('login did you make it here2')
             user = User.query.filter_by(username=login_search_user).first()
-            print('did you make it here3')
+            print('login did you make it here3')
             numqueries = len(user.post)
-            print('did you make it here4')
-            loginlogs = user.login_timestamp
-            loginlogslen = len(loginlogs)
-            loginlogstime = loginlogs[0].login_timestamp
-            logoutlogs = user.logout_timestamp
-            logoutlogslen = len(logoutlogs)
-            loginlogstime = loginlogs[0].login_timestamp
-            print('did you make it here5')   
-            return render_template('login_history.html', title='History', form=form, user=user, loginlogstime = loginlogstime, loginlogslen=loginlogslen, logoutlogslen=logoutlogslen, loginlogs=loginlogs, logoutlogs=logoutlogs, cuser=cuser, numqueries=numqueries, login_search_user=login_search_user)
+            print('login did you make it here4')
+            loginhistory = user.login_history
+            loginhistorylen = len(loginhistory)
+            loginlogstime = loginhistory[0].login_timestamp
+            logoutlogstime = loginhistory[0].logout_timestamp
+            print('login did you make it here5')   
+            return render_template('login_history.html', title='History', form=form, user=user, loginlogstime = loginlogstime, logoutlogstime=logoutlogstime, loginhistory=loginhistory, cuser=cuser, login_search_user=login_search_user)
         else:
-            print('did you make it here6')
+            print('login did you make it here6')
             return render_template('login_history.html', title='History', form=form, cuser=cuser)
     else:
         return render_template('error.html', title='ERROR')

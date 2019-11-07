@@ -23,12 +23,12 @@
                     {{ form.submit(class="btn btn-outline-info") }}
                 </div>
             </form>
-            {% for i in loginlogs %}
-                <p>{{login_search_user}} Login Time: {{i.login_timestamp}}</p>
-                {% for a in logoutlogs %}
-                    <p>{{login_search_user}} Logout Time: {{a.logout_timestamp}}</p>
+            {% if user != None %}
+                {% for i in loginhistory %}
+                    <p>{{login_search_user}} Login Time: {{i.login_timestamp}}</p>
+                    <p>{{login_search_user}} Logout Time: {{i.logout_timestamp}}</p>
                 {% endfor %}
-            {% endfor %}
+            {% endif %}
         {% endif %}
     </div>
 {% endblock content %}
