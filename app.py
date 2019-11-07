@@ -97,7 +97,10 @@ def register():
 def login():
     form = LoginForm()
     user = User.query.filter_by(username=form.username.data).first()
-    if form.validate_on_submit():
+    if user == None:
+            result = 'Incorrect'
+            return render_template('login.html', title='Login', form=form, result=result)
+    elif form.validate_on_submit():
         hashed_login = bcrypt.hashpw((form.password.data).encode('utf-8'),user.salt)
         if user == None:
             result = 'Incorrect'
