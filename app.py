@@ -46,7 +46,7 @@ class Post(db.Model):
 class Login_history(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     login_timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    logout_timestamp = db.Column(db.DateTime, default=None)
+    logout_timestamp = db.Column(db.DateTime)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     def __repr__(self):
@@ -71,6 +71,7 @@ def setup_db():
 
 @app.route("/register", methods=['GET', 'POST'])
 def register():
+    logout()
     form = RegistrationForm()
     if request.method == 'POST':
         if form.validate_on_submit():
@@ -95,6 +96,7 @@ def register():
 
 @app.route("/login", methods=['GET', 'POST'])
 def login():
+    logout()
     form = LoginForm()
     user = User.query.filter_by(username=form.username.data).first()
     if user == None:
@@ -110,7 +112,6 @@ def login():
             login_time = Login_history(user=current_user, login_timestamp=datetime.now())
             db.session.add(login_time)
             db.session.commit()
-            print('login')
             result = 'success'
             return render_template('login.html', title='Login', form=form, result=result)
         elif hashed_login != user.password or form.username.data != user.username:
@@ -126,10 +127,10 @@ def login():
 @app.route("/logout", methods=['GET'])
 @login_required
 def logout():
-    logout_time = Login_history(user=current_user, logout_timestamp=datetime.now())
-    db.session.add(logout_time)
-    db.session.commit()
-    print('logout')
+    if current_user != None:
+        loginhistory = current_user.login_history
+        loginhistory[-1].logout_timestamp = datetime.now()
+        db.session.commit()
     logout_user()
     return redirect(url_for('login'))
     
@@ -140,9 +141,7 @@ def spell_check():
     form = SpellCheckForm()
     global input_text
     global spellcheck_results
-    print('spell did you make it here')
     if form.validate_on_submit():
-        print('spell did you make it here1')
         input_text = form.checktext.data
         input_file = open("spellcheckfile.txt","w")
         input_file.write(input_text)
@@ -157,13 +156,9 @@ def spell_check():
         db.session.commit()
         spellcheck_file.write(spellcheck_results)
         spellcheck_file.close()
-        print('spell did you make it here2')
         return render_template('spell_check.html', title='Spell Checker Results', form=form, spellcheck_results=spell_check.spell_results, input_text=spell_check.spell_submitted)
-        print('spell did you make it here')
     else:
-        print('spell did you make it here3')
         return render_template('spell_check.html', title='Spell Checker', form=form)
-        print('spell did you make it here4')
 
 
 @app.route("/history", 
@@ -173,34 +168,21 @@ def history():
     form = HistoryForm()
     cuser = current_user.username
     global search_user
-    print('current user = '+ cuser)
     if cuser == None:
         return render_template('error.html', title='ERROR')
     if cuser == 'admin':
-        print(form.username.data)
-        print('did you make it here')
         if form.validate_on_submit():
-            print('did you make it here1')
             search_user = form.username.data
-            print('did you make it here2')
             user = User.query.filter_by(username=search_user).first()
-            print('did you make it here3')
             numqueries = len(user.post)
-            print('did you make it here4')
-            queries = user.post
-            print('did you make it here5')   
+            queries = user.post 
             return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries, search_user=search_user)
         else:
-            print('did you make it here6')
             return render_template('history.html', title='History', form=form, cuser=cuser)
     else:
-        print('did you make it here7')
         user = User.query.filter_by(username=current_user.username).first()
-        print('did you make it here8')
         numqueries = len(user.post)
-        print('did you make it here9')
         queries = user.post
-        print('did you make it here10')
         return render_template('history.html', title='History', form=form, user=user, numqueries=numqueries, cuser=cuser, queries=queries)
         
 
@@ -211,25 +193,17 @@ def history_query(queryid):
     global search_user
     query_id = queryid
     manquery_username = Post.query.filter_by(id=query_id).first().user.username
-    print(manquery_username)
     manquery_submitted = Post.query.filter_by(id=query_id).first().spell_submitted
-    print(manquery_submitted)
     manquery_results = Post.query.filter_by(id=query_id).first().spell_results
-    print(manquery_results)
     if cuser != manquery_username and cuser == 'admin' and search_user == -1:
-        print('search_user')
         return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
     elif cuser != manquery_username and cuser != 'admin' and search_user == -1:
-        print('search_user')
         return render_template('error.html', title='ERROR')
     elif cuser == manquery_username and cuser == 'admin' and search_user == -1:
-        print('search_user')
         return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
     elif cuser == manquery_username and cuser != 'admin' and search_user == -1:
-        print('search_user')
         return render_template('query_details.html', title='Query Details', search_user=search_user, cuser=cuser, query_id=query_id, manquery_username=manquery_username, manquery_submitted=manquery_submitted, manquery_results=manquery_results)
     elif cuser == 'admin':    
-        print('admin')
         username = search_user
         user = User.query.filter_by(username=search_user).first()
         numqueries = len(user.post)
@@ -239,7 +213,6 @@ def history_query(queryid):
                 query_results = user.post[i].spell_results
         return render_template('query_details.html', title='Query Details', username=username, cuser=cuser, query_id=query_id, query_submitted=query_submitted, query_results=query_results)
     else:
-        print('normal')
         username = cuser
         user = User.query.filter_by(username=cuser).first()
         numqueries = len(user.post)
@@ -257,28 +230,19 @@ def login_history():
     cuser = current_user.username
     user = None
     global login_search_user
-    print('current user = '+ cuser)
     if cuser == None:
         return render_template('error.html', title='ERROR')
     elif cuser == 'admin':
-        print(form.username.data)
-        print('login did you make it here')
         if form.validate_on_submit():
-            print('login did you make it here1')
             login_search_user = form.username.data
-            print('login did you make it here2')
             user = User.query.filter_by(username=login_search_user).first()
-            print('login did you make it here3')
             numqueries = len(user.post)
-            print('login did you make it here4')
             loginhistory = user.login_history
             loginhistorylen = len(loginhistory)
             loginlogstime = loginhistory[0].login_timestamp
-            logoutlogstime = loginhistory[0].logout_timestamp
-            print('login did you make it here5')   
+            logoutlogstime = loginhistory[0].logout_timestamp   
             return render_template('login_history.html', title='History', form=form, user=user, loginlogstime = loginlogstime, logoutlogstime=logoutlogstime, loginhistory=loginhistory, cuser=cuser, login_search_user=login_search_user)
         else:
-            print('login did you make it here6')
             return render_template('login_history.html', title='History', form=form, cuser=cuser)
     else:
         return render_template('error.html', title='ERROR')
