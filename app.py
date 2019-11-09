@@ -26,7 +26,6 @@ class User(db.Model, UserMixin):
     post = db.relationship('Post', backref='user', lazy=True)
     login_history = db.relationship('Login_history', backref='user', lazy=True)
 
-
     def __repr__(self):
         return f"User('{self.username}', '{self.password}', '{self.phone}')"
 
