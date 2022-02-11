@@ -51,7 +51,7 @@ packaging==19.2
 pexpect==4.2.1
 Pillow==5.1.0
 pluggy==0.13.0
-protobuf==3.0.0
+protobuf==3.15.0
 py==1.8.0
 pycairo==1.16.2
 pycparser==2.19
